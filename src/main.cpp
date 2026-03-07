@@ -54,15 +54,16 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31(); // Объект для
 Adafruit_BME280 bme280; // Объект для работы с BME280
 #endif
 
-const uint64_t NRF24_ADDRESS = 0xA337D135B1ULL; // Адрес получателя для nRF24L01+ // TODO Check
-RF24 radio(NRF24_CE_PIN, NRF24_CS_PIN);
+const uint64_t NRF24_ADDRESS = 0xA337D135B1ULL; // Адрес получателя для nRF24L01+
+RF24 radio(NRF24_CE_PIN, NRF24_CS_PIN);         // Объект для работы с nRF24L01+
 
+// Структура данных для отправки по радио
 typedef struct __attribute__((packed))
 {
-  float temperature{0.0f};
-  float humidity{0.0f};
-  uint16_t pressure{0};
-  uint16_t bat_charge{0}; // заряд батареи в процентах // TODO: реализовать
+  float temperature{0.0f}; // температура в градусах Цельсия
+  float humidity{0.0f};    // относительная влажность в процентах
+  uint16_t pressure{0};    // давление в гПа, умноженное на 100 (для сохранения с точностью до 0.01)
+  uint16_t bat_charge{0};  // заряд батареи в процентах
 } OutSensorData_t;
 
 float temp_val, pressure_val, humidity_val; // Глобальные переменные для хранения данных сенсоров
@@ -72,7 +73,7 @@ float temp_val, pressure_val, humidity_val; // Глобальные переме
 // Схема: V_bat → R1(280кОм) → GPIO2(ADC) → R2(280кОм) → Drain(2N7000) → GND
 //        Gate(2N7000) → GPIO17
 // Делитель 1:2 → V_adc = V_bat / 2
-// 18650: 4200 мВ = 100 %, 3000 мВ = 0 %
+// 18650: 4200 мВ = 100 %, 3200 мВ = 0 %
 // ---------------------------------------------------------------------------
 uint16_t readBatCharge(bool f_debug = false)
 {

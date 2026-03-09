@@ -124,6 +124,7 @@ void goToSleep()
   Serial.println("DEBUG: Going to sleep...");
   Serial.flush(); // Дождаться вывода перед отключением периферии
   delay(5000);
+  esp_restart(); // Перезагрузка вместо deep sleep для отладки через Serial
 #else
   esp_sleep_enable_timer_wakeup(1ULL * 60 * 1000000); // 1 минута
   esp_deep_sleep_start();

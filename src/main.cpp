@@ -1,4 +1,4 @@
-#define ESP32_C6 // Указываем, что используем ESP32-C6, чтобы включить правильные определения и функции из SDK
+// Определение ESP32_C6 передаётся через build_flags в platformio.ini для [env:xiao_esp32c6]
 
 #define SHTC3_SENSOR_ENABLED // Раскомментировать для использования SHTC3 вместо BME280
                              // #define SHT31_SENSOR_ENABLED // Раскомментировать для использования SHT31 вместо BME280
@@ -13,9 +13,10 @@
 #endif
 #include <Arduino.h>
 #include <RF24.h>
+#include <SPI.h>
+#include <WiFi.h>
 #include <Wire.h>
 #include <esp_sleep.h>
-#include <esp_wifi.h>
 
 #ifdef ESP32_C6
 // Пины и адреса I2C
@@ -35,16 +36,19 @@
 #define BAT_MOSFET_PIN 17 // GPIO17 — затвор 2N7000 (включает делитель)
 #else
 // Пины и адреса I2C
-#define SDA_PIN 8       // Пины для I2C
-#define SCL_PIN 9       // Пины для I2C
+#define SDA_PIN 8           // Пины для I2C
+#define SCL_PIN 9           // Пины для I2C
 
 // Пины для SPI
-#define SPI_SCK_PIN 4   // Пин SCK для SPI
-#define SPI_MISO_PIN 5  // Пин MISO для SPI
-#define SPI_MOSI_PIN 6  // Пин MOSI для SPI
-#define NRF24_CE_PIN 7  // Пин CE для nRF24L01+
-#define NRF24_CS_PIN 10 // Пин CS для SPI
-#endif                  // ESP32_C6
+#define SPI_SCK_PIN 4       // Пин SCK для SPI
+#define SPI_MISO_PIN 5      // Пин MISO для SPI
+#define SPI_MOSI_PIN 6      // Пин MOSI для SPI
+#define NRF24_CE_PIN 7      // Пин CE для nRF24L01+
+#define NRF24_CS_PIN 10     // Пин CS для SPI
+// Пины для измерения заряда батареи
+#define BAT_ADC_PIN TODO    // GPIO2  — вход АЦП (средняя точка делителя R1/R2)
+#define BAT_MOSFET_PIN TODO // GPIO17 — затвор 2N7000 (включает делитель)
+#endif                      // ESP32_C6
 
 #ifdef SHTC3_SENSOR_ENABLED
 Adafruit_SHTC3 shtc3 = Adafruit_SHTC3(); // Объект для работы с SHTC3
@@ -62,7 +66,7 @@ typedef struct __attribute__((packed))
 {
   float temperature{0.0f}; // температура в градусах Цельсия
   float humidity{0.0f};    // относительная влажность в процентах
-  uint16_t pressure{0};    // давление в гПа, умноженное на 100 (для сохранения с точностью до 0.01)
+  uint16_t pressure{0};    // давление в гПа
   uint16_t bat_charge{0};  // заряд батареи в процентах
 } OutSensorData_t;
 
@@ -135,11 +139,8 @@ void setup()
 {
   setCpuFrequencyMhz(80); // Сразу снижаем частоту CPU для экономии энергии
 
-  // Выключаем радио
-  // Гарантированно останавливаем Wi-Fi
-  // частично инициализировал его при старте
-  esp_wifi_stop();
-  esp_wifi_deinit();
+  // Выключаем WiFi для экономии энергии
+  WiFi.mode(WIFI_OFF);
 
 #ifdef TEST_W_SERIAL
   Serial.begin(115200);

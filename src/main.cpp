@@ -189,7 +189,7 @@ void setup()
 #endif
 
   shtc3.sleep(false); // Выводим SHTC3 из сна
-  delay(1);           // Wake-up time SHTC3 ~240 мкс, 1 мс достаточно
+  delay(5);           // Wake-up time SHTC3 ~240 мкс + время стабилизации
 
   sensors_event_t humidity, temp;
   shtc3.getEvent(&humidity, &temp);

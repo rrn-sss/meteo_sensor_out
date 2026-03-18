@@ -151,30 +151,6 @@ void setup()
   Wire.setClock(400000);        // 400 kHz — быстрее считывание, меньше активного времени
   // I2C initialized
 
-  SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
-
-  // Setup and configure rf radio
-  if (!radio.begin())
-  {
-#ifdef TEST_W_SERIAL
-    Serial.println(F("radio hardware not responding!"));
-#endif
-    goToSleep(); // Сон вместо delay(5000) + restart
-  }
-
-  delayMicroseconds(1500);              // Ждём стабилизации модуля после включения (Tpd2stby = 1.5ms)
-  radio.setPALevel(RF24_PA_HIGH);       // Уровень мощности передачи
-  radio.setDataRate(RF24_250KBPS);      // Скорость передачи данных
-  radio.setRetries(5, 3);               // 3 попытки с интервалом 5 (5*250 мкс) - более надежно
-  radio.setChannel(103);                // Канал 103 (2503 MHz)
-  radio.openWritingPipe(NRF24_ADDRESS); // Адрес получателя
-  radio.stopListening();                // Переходим в режим передачи
-  delayMicroseconds(150);               // Ждём переключения режима TX (130 мкс по datasheet)
-
-#ifdef TEST_W_SERIAL
-  Serial.println(F("RF24 radio initialized."));
-#endif
-
 #ifdef SHTC3_SENSOR_ENABLED
   if (!shtc3.begin())
   {
@@ -189,8 +165,7 @@ void setup()
 #endif
 
   shtc3.sleep(false); // Выводим SHTC3 из сна
-  delay(5);           // Wake-up time SHTC3 ~240 мкс + время стабилизации
-
+  // delay(5);           // Wake-up time SHTC3 ~240 мкс + время стабилизации
   sensors_event_t humidity, temp;
   shtc3.getEvent(&humidity, &temp);
   temp_val = temp.temperature;
@@ -257,6 +232,30 @@ void setup()
   data.humidity = humidity_val;
   data.pressure = static_cast<uint16_t>(pressure_val);
   data.bat_charge = readBatCharge(true);
+
+  SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
+
+  // Setup and configure rf radio
+  if (!radio.begin())
+  {
+#ifdef TEST_W_SERIAL
+    Serial.println(F("radio hardware not responding!"));
+#endif
+    goToSleep(); // Сон вместо delay(5000) + restart
+  }
+
+  delayMicroseconds(1500);              // Ждём стабилизации модуля после включения (Tpd2stby = 1.5ms)
+  radio.setPALevel(RF24_PA_HIGH);       // Уровень мощности передачи
+  radio.setDataRate(RF24_250KBPS);      // Скорость передачи данных
+  radio.setRetries(5, 3);               // 3 попытки с интервалом 5 (5*250 мкс) - более надежно
+  radio.setChannel(103);                // Канал 103 (2503 MHz)
+  radio.openWritingPipe(NRF24_ADDRESS); // Адрес получателя
+  radio.stopListening();                // Переходим в режим передачи
+  delayMicroseconds(150);               // Ждём переключения режима TX (130 мкс по datasheet)
+
+#ifdef TEST_W_SERIAL
+  Serial.println(F("RF24 radio initialized."));
+#endif
 
   radio.flush_tx(); // Очищаем TX буфер перед отправкой
   bool ok = radio.write(&data, sizeof(OutSensorData_t));

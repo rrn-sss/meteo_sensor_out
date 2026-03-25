@@ -51,19 +51,19 @@ GxEPD2_BW<GxEPD2_154_GDEY0154D67, GxEPD2_154_GDEY0154D67::HEIGHT> display(GxEPD2
 
 #else
 // Пины и адреса I2C
-#define SDA_PIN 8           // Пины для I2C
-#define SCL_PIN 9           // Пины для I2C
+#define SDA_PIN 8         // Пины для I2C
+#define SCL_PIN 9         // Пины для I2C
 
 // Пины для SPI
-#define SPI_SCK_PIN 4       // Пин SCK для SPI
-#define SPI_MISO_PIN 5      // Пин MISO для SPI
-#define SPI_MOSI_PIN 6      // Пин MOSI для SPI
-#define NRF24_CE_PIN 7      // Пин CE для nRF24L01+
-#define NRF24_CS_PIN 10     // Пин CS для SPI
+#define SPI_SCK_PIN 4     // Пин SCK для SPI
+#define SPI_MISO_PIN 5    // Пин MISO для SPI
+#define SPI_MOSI_PIN 6    // Пин MOSI для SPI
+#define NRF24_CE_PIN 7    // Пин CE для nRF24L01+
+#define NRF24_CS_PIN 10   // Пин CS для SPI
 // Пины для измерения заряда батареи
-#define BAT_ADC_PIN TODO    // GPIO2  — вход АЦП (средняя точка делителя R1/R2)
-#define BAT_MOSFET_PIN TODO // GPIO17 — затвор 2N7000 (включает делитель)
-#endif                      // ESP32_C6
+#define BAT_ADC_PIN 2     // GPIO2  — вход АЦП (средняя точка делителя R1/R2)
+#define BAT_MOSFET_PIN 17 // GPIO17 — затвор 2N7000 (включает делитель)
+#endif                    // ESP32_C6
 
 #ifdef SHTC3_SENSOR_ENABLED
 Adafruit_SHTC3 shtc3 = Adafruit_SHTC3(); // Объект для работы с SHTC3
@@ -100,11 +100,14 @@ uint16_t readBatCharge(bool f_debug = false)
   digitalWrite(BAT_MOSFET_PIN, HIGH); // включаем делитель через MOSFET
   delay(10);                          // ждём стабилизации (RC-цепь 280кОм × C_ввода)
 
-  // Некоторые Arduino-ядра ESP32 не предоставляют adcAttachPin(),
-  // поэтому выполняем одно чтение, чтобы pin зарегистрировался в ADC-подсистеме,
-  // затем устанавливаем аттенюацию для корректного диапазона.
-  analogRead(BAT_ADC_PIN);                        // принудительно зарегистрировать пин
-  analogSetPinAttenuation(BAT_ADC_PIN, ADC_11db); // диапазон 0–3.3 В
+  // analogSetPinAttenuation() требует, чтобы пин УЖЕ был зарегистрирован
+  // в perimanager как ESP32_BUS_TYPE_ADC_ONESHOT, иначе — ошибка
+  // «Pin is not configured as analog channel».
+  // Решение: задаём глобальную аттенюацию ДО первого analogRead().
+  // analogRead() сам вызывает __analogInit(), который регистрирует пин
+  // и конфигурирует канал с текущей глобальной аттенюацией.
+  analogSetAttenuation(ADC_11db); // глобально: диапазон 0–3.3 В
+  analogRead(BAT_ADC_PIN);        // авторегистрация пина + dummy read
 
   // Усреднение 8 выборок для снижения шума АЦП
   uint32_t adcSum = 0;

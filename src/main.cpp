@@ -2,7 +2,8 @@
 
 #define SHTC3_SENSOR_ENABLED // Раскомментировать для использования SHTC3 вместо BME280
                              // #define SHT31_SENSOR_ENABLED // Раскомментировать для использования SHT31 вместо BME280
-// #define TEST_W_SERIAL        // Раскомментировать для отладки через Serial
+#define TEST_W_SERIAL        // Раскомментировать для отладки через Serial
+#define EINK_DISPLAY_ENABLED // Раскомментировать для включения e-ink дисплея
 
 #ifdef SHTC3_SENSOR_ENABLED
 #include <Adafruit_SHTC3.h>
@@ -17,6 +18,10 @@
 #include <WiFi.h>
 #include <Wire.h>
 #include <esp_sleep.h>
+
+#ifdef EINK_DISPLAY_ENABLED
+#include <GxEPD2_BW.h>
+#endif
 
 #ifdef ESP32_C6
 // Пины и адреса I2C
@@ -34,6 +39,16 @@
 // Пины для измерения заряда батареи
 #define BAT_ADC_PIN 2     // GPIO2  — вход АЦП (средняя точка делителя R1/R2)
 #define BAT_MOSFET_PIN 17 // GPIO17 — затвор 2N7000 (включает делитель)
+// Пины для e-ink дисплея (SSD168, 200x200)
+#define EINK_CS_PIN 1   // D1 - Chip Select
+#define EINK_DC_PIN 16  // D6 - Data/Command
+#define EINK_BUSY_PIN 2 // D2 - Busy (shared с BAT_ADC_PIN!)
+
+// GxEPD2 экземпляр для 200x200 SSD168 (SSD1681) монохромного дисплея
+#ifdef EINK_DISPLAY_ENABLED
+GxEPD2_BW<GxEPD2_154_GDEY0154D67, GxEPD2_154_GDEY0154D67::HEIGHT> display(GxEPD2_154_GDEY0154D67(EINK_CS_PIN, EINK_DC_PIN, /*RST=*/-1, EINK_BUSY_PIN));
+#endif
+
 #else
 // Пины и адреса I2C
 #define SDA_PIN 8           // Пины для I2C
@@ -53,7 +68,7 @@
 #ifdef SHTC3_SENSOR_ENABLED
 Adafruit_SHTC3 shtc3 = Adafruit_SHTC3(); // Объект для работы с SHTC3
 #elif defined(SHT31_SENSOR_ENABLED)
-Adafruit_SHT31 sht31 = Adafruit_SHT31(); // Объект для
+Adafruit_SHT31 sht31 = Adafruit_SHT31(); // Объект для работы с SHT31
 #else
 Adafruit_BME280 bme280; // Объект для работы с BME280
 #endif
@@ -134,6 +149,69 @@ void goToSleep()
   esp_deep_sleep_start();
 #endif
 }
+
+// ---------------------------------------------------------------------------
+// Обновление e-ink дисплея (SSD168, 200x200) с данными датчиков
+// ВАЖНО: вызывать ПОСЛЕ измерения батареи, т.к. BUSY пин (GPIO2) используется для обоих
+// ---------------------------------------------------------------------------
+#ifdef EINK_DISPLAY_ENABLED
+void updateDisplay(const OutSensorData_t &sensorData)
+{
+#ifdef TEST_W_SERIAL
+  Serial.println("DEBUG: Initializing e-ink display...");
+#endif
+
+  // Переинициализация SPI для дисплея (NRF24 уже выключен)
+  SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN);
+
+  // Устанавливаем пины CS и DC как выходы (SPI.begin не делает это автоматически)
+  pinMode(EINK_CS_PIN, OUTPUT);
+  pinMode(EINK_DC_PIN, OUTPUT);
+
+  display.init(/*115200=*/false);
+  display.setRotation(1);
+  display.fillScreen(GxEPD_WHITE);
+
+  // Отображение данных
+  display.setTextColor(GxEPD_BLACK);
+  display.setCursor(10, 30);
+
+  // Температура
+  display.print("Temp: ");
+  display.print(sensorData.temperature, 1);
+  display.println(" C");
+
+  // Влажность
+  display.print("Humidity: ");
+  display.print(sensorData.humidity, 1);
+  display.println(" %");
+
+  // Давление
+  display.print("Pressure: ");
+  display.print(sensorData.pressure);
+  display.println(" hPa");
+
+  // Заряд батареи
+  display.print("Battery: ");
+  display.print(sensorData.bat_charge);
+  display.println(" %");
+
+#ifdef TEST_W_SERIAL
+  Serial.println("DEBUG: Updating e-ink display...");
+#endif
+
+  // Полное обновление (full refresh) для корректного отображения
+  display.display(false);
+
+  // Выключаем дисплей для экономии энергии
+  display.powerOff();
+
+#ifdef TEST_W_SERIAL
+  Serial.println("DEBUG: E-ink display update complete");
+#endif
+  SPI.end();
+}
+#endif // EINK_DISPLAY_ENABLED
 
 void setup()
 {
@@ -267,6 +345,10 @@ void setup()
   radio.powerDown();
   SPI.end();
   Wire.end();
+
+#ifdef EINK_DISPLAY_ENABLED
+  updateDisplay(data);
+#endif
 
   // GPIO изолировать НЕ НУЖНО — ESP32-C6 делает это автоматически при deep sleep
   goToSleep();

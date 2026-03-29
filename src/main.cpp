@@ -2,7 +2,7 @@
 
 #define SHTC3_SENSOR_ENABLED // Раскомментировать для использования SHTC3 вместо BME280
                              // #define SHT31_SENSOR_ENABLED // Раскомментировать для использования SHT31 вместо BME280
-#define TEST_W_SERIAL        // Раскомментировать для отладки через Serial
+// #define TEST_W_SERIAL        // Раскомментировать для отладки через Serial
 #define EINK_DISPLAY_ENABLED // Раскомментировать для включения e-ink дисплея
 
 #ifdef SHTC3_SENSOR_ENABLED
@@ -12,12 +12,15 @@
 #else
 #include <Adafruit_BME280.h>
 #endif
+#include "esp_attr.h"
 #include <Arduino.h>
 #include <RF24.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <Wire.h>
 #include <esp_sleep.h>
+
+RTC_DATA_ATTR uint8_t screen_update_counter = 0;
 
 #ifdef EINK_DISPLAY_ENABLED
 #include <Fonts/FreeSansBold12pt7b.h>
@@ -206,10 +209,12 @@ void updateDisplay(const OutSensorData_t &sensorData)
 #endif
 
   // Полное обновление (full refresh) для корректного отображения
-  display.display(false);
+  display.display(false); // false = full refresh
 
   // Выключаем дисплей для экономии энергии
   display.powerOff();
+  // display.hibernate(); // Глубокий сон для дисплея — минимальное потребление, быстрое пробуждение
+  // display.end();       // Освобождаем ресурсы дисплея
 
 #ifdef TEST_W_SERIAL
   Serial.println("DEBUG: E-ink display update complete");
@@ -350,7 +355,12 @@ void setup()
   Wire.end();
 
 #ifdef EINK_DISPLAY_ENABLED
-  updateDisplay(data);
+  if (screen_update_counter == 0)
+  {
+    updateDisplay(data);
+  }
+  // Инкремент счетчика обновления экрана (сохраняется в RTC памяти)
+  screen_update_counter = (screen_update_counter + 1) % 15;
 #endif
   SPI.end();
 

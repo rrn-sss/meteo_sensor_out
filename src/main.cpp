@@ -20,6 +20,7 @@
 #include <esp_sleep.h>
 
 #ifdef EINK_DISPLAY_ENABLED
+#include <Fonts/FreeSansBold12pt7b.h>
 #include <GxEPD2_BW.h>
 #endif
 
@@ -175,9 +176,10 @@ void updateDisplay(const OutSensorData_t &sensorData)
   display.setRotation(1);
   display.fillScreen(GxEPD_WHITE);
 
-  // Отображение данных
+  // Отображение данных с увеличенным шрифтом
+  display.setFont(&FreeSansBold12pt7b);
   display.setTextColor(GxEPD_BLACK);
-  display.setCursor(10, 30);
+  display.setCursor(5, 40);
 
   // Температура
   display.print("Temp: ");

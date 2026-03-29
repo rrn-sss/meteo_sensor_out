@@ -214,7 +214,6 @@ void updateDisplay(const OutSensorData_t &sensorData)
 #ifdef TEST_W_SERIAL
   Serial.println("DEBUG: E-ink display update complete");
 #endif
-  SPI.end();
 }
 #endif // EINK_DISPLAY_ENABLED
 
@@ -348,12 +347,12 @@ void setup()
   Serial.flush(); // Дождаться вывода перед отключением периферии
 #endif
   radio.powerDown();
-  SPI.end();
   Wire.end();
 
 #ifdef EINK_DISPLAY_ENABLED
   updateDisplay(data);
 #endif
+  SPI.end();
 
   // GPIO изолировать НЕ НУЖНО — ESP32-C6 делает это автоматически при deep sleep
   goToSleep();

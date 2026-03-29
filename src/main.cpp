@@ -40,13 +40,13 @@
 #define BAT_ADC_PIN 2     // GPIO2  — вход АЦП (средняя точка делителя R1/R2)
 #define BAT_MOSFET_PIN 17 // GPIO17 — затвор 2N7000 (включает делитель)
 // Пины для e-ink дисплея (SSD168, 200x200)
-#define EINK_CS_PIN 1   // D1 - Chip Select
-#define EINK_DC_PIN 16  // D6 - Data/Command
-#define EINK_BUSY_PIN 2 // D2 - Busy (shared с BAT_ADC_PIN!)
+#define EINK_CS_PIN 1    // D1 - Chip Select
+#define EINK_DC_PIN 16   // D6 - Data/Command
+#define EINK_BUSY_PIN -1 // BUSY пин не используется, т.к. GPIO2 уже занят для измерения батареи. Будем использовать задержки вместо BUSY.
 
 // GxEPD2 экземпляр для 200x200 SSD168 (SSD1681) монохромного дисплея
 #ifdef EINK_DISPLAY_ENABLED
-GxEPD2_BW<GxEPD2_154_GDEY0154D67, GxEPD2_154_GDEY0154D67::HEIGHT> display(GxEPD2_154_GDEY0154D67(EINK_CS_PIN, EINK_DC_PIN, /*RST=*/-1, EINK_BUSY_PIN));
+GxEPD2_BW<GxEPD2_154_GDEY0154D67, GxEPD2_154_GDEY0154D67::HEIGHT> display(GxEPD2_154_GDEY0154D67(EINK_CS_PIN, EINK_DC_PIN, /*RST=*/-1, /*EINK_BUSY_PIN*/ -1));
 #endif
 
 #else
